@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-st.set_page_config(page_title="Predicción Hospital Ica", page_icon="🏥")
+st.set_page_config(page_title="Predicción Hospital Ica")
 
-st.title("🏥 Predicción de Demanda de Pacientes")
+st.title("Predicción de Demanda de Pacientes")
 st.write("Hospital Regional de Ica - Analítica Predictiva")
 
 @st.cache_resource
@@ -15,9 +15,9 @@ def cargar_modelo():
 
 modelo, variables = cargar_modelo()
 
-st.success("✅ Modelo .pkl cargado y activo.")
+st.success("Modelo .pkl cargado y activo.")
 
-st.subheader("📋 Ingrese los datos operativos del día:")
+st.subheader("Ingrese los datos operativos del día:")
 
 col1, col2 = st.columns(2)
 
@@ -34,7 +34,7 @@ with col2:
 primera_hora_min = 480.0
 ultima_hora_min = 780.0
 
-if st.button("🔮 Calcular Afluencia Predicha"):
+if st.button("Calcular Afluencia Predicha"):
     nuevo_caso = pd.DataFrame([{
         "% VIEJOS": pct_viejos,
         "PROM_T_CITA": prom_t_cita,
