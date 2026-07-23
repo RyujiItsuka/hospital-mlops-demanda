@@ -1,40 +1,90 @@
 import streamlit as st
 import pandas as pd
-import joblib
+import numpy as np
 
-# Configurar el título de la aplicación web
-st.title("🏥 Sistema de Predicción de Demanda Hospitalaria")
-st.write("Ingrese las variables operativas del día para predecir la afluencia de pacientes.")
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestRegressor
 
-# Cargar el modelo guardado
+st.set_page_config(page_title="Predicción Hospital Ica", page_icon="🏥")
+
+st.title("🏥 Predicción de Demanda de Pacientes")
+st.write("Hospital Regional de Ica - Analítica Predictiva")
+
+# 1. Cargar datos y entrenar el modelo en memoria con Cache
 @st.cache_resource
-def cargar_modelo():
-    return joblib.load('modelo_demanda_hospital.pkl')
+def entrenar_modelo():
+    # Cargar los datos desde el repositorio
+    df = pd.read_excel("DatosHopital.xlsx", sheet_name="Resumen")
+    
+    # Feature engineering
+    df['Mes'] = pd.to_datetime(df['FECHA']).dt.month
+    
+    def hora_a_minutos(h):
+        if pd.isnull(h):
+            return np.nan
+        if isinstance(h, str):
+            h = pd.to_datetime(h).time()
+        return h.hour * 60 + h.minute + h.second / 60.0
 
-modelo = cargar_modelo()
+    df['PRIMERA_HORA_MIN'] = df['PRIMERA_HORA'].apply(hora_a_minutos)
+    df['ULTIMA_HORA_MIN'] = df['ULTIMA_HORA'].apply(hora_a_minutos)
 
-# Formulario interactivo para que el usuario ingrese datos
-st.sidebar.header("Parámetros del Día")
-dia_semana = st.sidebar.selectbox("Día de la semana", ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado"])
-mes = st.sidebar.slider("Mes del año", 1, 12, 5)
-porcentaje_viejos = st.sidebar.slider("Porcentaje de Adultos Mayores (%)", 0, 100, 25) / 100.0
-prom_t_cita = st.sidebar.number_input("Tiempo promedio de cita (minutos)", value=23.5)
-max_t_cita = st.sidebar.number_input("Tiempo máximo de cita (minutos)", value=46.0)
-min_t_cita = st.sidebar.number_input("Tiempo mínimo de cita (minutos)", value=4.0)
+    objetivo = "CLIENTES"
+    variables_numericas = ["% VIEJOS", "PROM_T_CITA", "MAX_T_CITA", "MIN_T_CITA", "Mes", "PRIMERA_HORA_MIN", "ULTIMA_HORA_MIN"]
+    variables_categoricas = ["DIA_SEMANA"]
+    variables = variables_numericas + variables_categoricas
 
-# Horarios de atención
-primera_hora = st.sidebar.time_input("Primera hora de atención", pd.to_datetime("08:00").time())
-ultima_hora = st.sidebar.time_input("Última hora de atención", pd.to_datetime("13:00").time())
+    df_modelo = df[variables + [objetivo]].dropna()
+    X = df_modelo[variables]
+    y = df_modelo[objetivo]
 
-# Convertir hora a minutos desde la medianoche
-primera_hora_min = primera_hora.hour * 60 + primera_hora.minute
-ultima_hora_min = ultima_hora.hour * 60 + ultima_hora.minute
+    preprocesamiento = ColumnTransformer(
+        transformers=[
+            ("num", StandardScaler(), variables_numericas),
+            ("cat", OneHotEncoder(handle_unknown="ignore"), variables_categoricas)
+        ]
+    )
 
-# Botón para predecir
-if st.button("Calcular Demanda Predicha"):
-    # Crear el nuevo caso como DataFrame
+    modelo_rf = Pipeline(
+        steps=[
+            ("preprocesamiento", preprocesamiento),
+            ("modelo", RandomForestRegressor(n_estimators=200, random_state=42))
+        ]
+    )
+
+    modelo_rf.fit(X, y)
+    return modelo_rf, variables
+
+# Inicializar modelo
+modelo, variables = entrenar_modelo()
+
+st.success("✅ Modelo Random Forest cargado y activo.")
+
+# 2. Formulario de Entrada de Datos
+st.subheader("📋 Ingrese los datos operativos del día:")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    dia_semana = st.selectbox("Día de la semana", ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado"])
+    pct_viejos = st.slider("Porcentaje de Adultos Mayores (%)", 0, 100, 25) / 100.0
+    mes = st.slider("Mes", 1, 12, 5)
+
+with col2:
+    prom_t_cita = st.number_input("Tiempo promedio de cita (min)", value=23.5)
+    max_t_cita = st.number_input("Tiempo máximo de cita (min)", value=46.0)
+    min_t_cita = st.number_input("Tiempo mínimo de cita (min)", value=4.0)
+
+primera_hora_min = 480.0  # 08:00 AM
+ultima_hora_min = 780.0   # 01:00 PM
+
+# 3. Predicción
+if st.button("🔮 Calcular Afluencia Predicha"):
     nuevo_caso = pd.DataFrame([{
-        "% VIEJOS": porcentaje_viejos,
+        "% VIEJOS": pct_viejos,
         "PROM_T_CITA": prom_t_cita,
         "MAX_T_CITA": max_t_cita,
         "MIN_T_CITA": min_t_cita,
@@ -44,15 +94,6 @@ if st.button("Calcular Demanda Predicha"):
         "DIA_SEMANA": dia_semana
     }])
     
-    # Realizar la predicción
-    prediccion = modelo.predict(nuevo_caso)[0]
-    pacientes_est = int(round(prediccion))
+    prediccion = modelo.predict(nuevo_caso[variables])[0]
     
-    # Mostrar resultados en la interfaz
-    st.success(f"📊 Demanda estimada para este día: **{pacientes_est} pacientes**")
-    
-    # Recomendación prescriptiva básica
-    if pacientes_est > 160:
-        st.warning("⚠️ Alta afluencia proyectada: Se recomienda habilitar ventanillas adicionales.")
-    else:
-        st.info("✅ Afluencia dentro del rango operativo normal.")
+    st.metric(label="Pacientes Estimados", value=f"{int(round(prediccion))} personas")
