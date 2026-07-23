@@ -1,12 +1,6 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-
-from sklearn.model_selection import train_test_split
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestRegressor
+import joblib
 
 st.set_page_config(page_title="Predicción Hospital Ica", page_icon="🏥")
 
@@ -14,51 +8,14 @@ st.title("🏥 Predicción de Demanda de Pacientes")
 st.write("Hospital Regional de Ica - Analítica Predictiva")
 
 @st.cache_resource
-def entrenar_modelo():
+def cargar_modelo():
+    modelo = joblib.load("modelo_demanda_hospital.pkl")
+    variables = joblib.load("variables_modelo.pkl")
+    return modelo, variables
 
-    df = pd.read_excel("DatosHopital.xlsx", sheet_name="Resumen")
-    
-    df['Mes'] = pd.to_datetime(df['FECHA']).dt.month
-    
-    def hora_a_minutos(h):
-        if pd.isnull(h):
-            return np.nan
-        if isinstance(h, str):
-            h = pd.to_datetime(h).time()
-        return h.hour * 60 + h.minute + h.second / 60.0
+modelo, variables = cargar_modelo()
 
-    df['PRIMERA_HORA_MIN'] = df['PRIMERA_HORA'].apply(hora_a_minutos)
-    df['ULTIMA_HORA_MIN'] = df['ULTIMA_HORA'].apply(hora_a_minutos)
-
-    objetivo = "CLIENTES"
-    variables_numericas = ["% VIEJOS", "PROM_T_CITA", "MAX_T_CITA", "MIN_T_CITA", "Mes", "PRIMERA_HORA_MIN", "ULTIMA_HORA_MIN"]
-    variables_categoricas = ["DIA_SEMANA"]
-    variables = variables_numericas + variables_categoricas
-
-    df_modelo = df[variables + [objetivo]].dropna()
-    X = df_modelo[variables]
-    y = df_modelo[objetivo]
-
-    preprocesamiento = ColumnTransformer(
-        transformers=[
-            ("num", StandardScaler(), variables_numericas),
-            ("cat", OneHotEncoder(handle_unknown="ignore"), variables_categoricas)
-        ]
-    )
-
-    modelo_rf = Pipeline(
-        steps=[
-            ("preprocesamiento", preprocesamiento),
-            ("modelo", RandomForestRegressor(n_estimators=200, random_state=42))
-        ]
-    )
-
-    modelo_rf.fit(X, y)
-    return modelo_rf, variables
-
-modelo, variables = entrenar_modelo()
-
-st.success("✅ Modelo Random Forest cargado y activo.")
+st.success("✅ Modelo .pkl cargado y activo.")
 
 st.subheader("📋 Ingrese los datos operativos del día:")
 
