@@ -23,7 +23,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     dia_semana = st.selectbox("Día de la semana", ["lunes", "martes", "miercoles", "jueves", "viernes"])
-    pct_viejos = st.slider("Porcentaje de Adultos Mayores (%)", 0, 100, 25) / 100.0
+    pct_viejos = st.slider("Porcentaje de Adultos Mayores (%)", 0, 100, 25)
     mes = st.slider("Mes", 1, 12, 5)
 
 with col2:
