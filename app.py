@@ -13,13 +13,11 @@ st.set_page_config(page_title="Predicción Hospital Ica", page_icon="🏥")
 st.title("🏥 Predicción de Demanda de Pacientes")
 st.write("Hospital Regional de Ica - Analítica Predictiva")
 
-# 1. Cargar datos y entrenar el modelo en memoria con Cache
 @st.cache_resource
 def entrenar_modelo():
-    # Cargar los datos desde el repositorio
+
     df = pd.read_excel("DatosHopital.xlsx", sheet_name="Resumen")
     
-    # Feature engineering
     df['Mes'] = pd.to_datetime(df['FECHA']).dt.month
     
     def hora_a_minutos(h):
@@ -58,18 +56,16 @@ def entrenar_modelo():
     modelo_rf.fit(X, y)
     return modelo_rf, variables
 
-# Inicializar modelo
 modelo, variables = entrenar_modelo()
 
 st.success("✅ Modelo Random Forest cargado y activo.")
 
-# 2. Formulario de Entrada de Datos
 st.subheader("📋 Ingrese los datos operativos del día:")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    dia_semana = st.selectbox("Día de la semana", ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado"])
+    dia_semana = st.selectbox("Día de la semana", ["lunes", "martes", "miercoles", "jueves", "viernes"])
     pct_viejos = st.slider("Porcentaje de Adultos Mayores (%)", 0, 100, 25) / 100.0
     mes = st.slider("Mes", 1, 12, 5)
 
@@ -78,10 +74,9 @@ with col2:
     max_t_cita = st.number_input("Tiempo máximo de cita (min)", value=46.0)
     min_t_cita = st.number_input("Tiempo mínimo de cita (min)", value=4.0)
 
-primera_hora_min = 480.0  # 08:00 AM
-ultima_hora_min = 780.0   # 01:00 PM
+primera_hora_min = 480.0
+ultima_hora_min = 780.0
 
-# 3. Predicción
 if st.button("🔮 Calcular Afluencia Predicha"):
     nuevo_caso = pd.DataFrame([{
         "% VIEJOS": pct_viejos,
