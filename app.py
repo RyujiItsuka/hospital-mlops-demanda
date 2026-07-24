@@ -22,7 +22,7 @@ st.subheader("Ingrese los datos operativos del día:")
 col1, col2 = st.columns(2)
 
 with col1:
-    dia_semana = st.selectbox("Día de la semana", ["lunes", "martes", "miercoles", "jueves", "viernes"])
+    dia_semana = st.selectbox("Día de la semana", ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"])
     pct_viejos = st.slider("Porcentaje de Adultos Mayores (%)", 0, 100, 25)
     mes = st.slider("Mes", 1, 12, 5)
 
